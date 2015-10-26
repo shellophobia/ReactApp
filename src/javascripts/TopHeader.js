@@ -69,7 +69,7 @@ var CityDropDown = React.createClass({
     }.bind(this));
   },
   changeCityName: function(cityName) {
-    console.log(cityName);
+    this.setState({currentCity: cityName});
   },
   handleMouseOver: function() {
     this.setState({mouseState: 'show'});
@@ -89,16 +89,8 @@ var CityDropDown = React.createClass({
           <span className = {styles.selectedCityName}>{this.state.currentCity}</span>
           <span className = "fa fa-angle-down down-arrow"></span>
         </div>
-        <DropDown cities = {this.state.cityHash} mouseState = {this.state.mouseState} changeCityName = {this.changeCityName}/>
+        <DropDown cities = {this.state.cityHash} currentCity = {this.state.currentCity} mouseState = {this.state.mouseState} changeCityName = {this.changeCityName}/>
       </div>
-    );
-  }
-});
-
-var CityDropDownMenu = React.createClass({
-  render: function() {
-    return (
-      <ul></ul>
     );
   }
 });
