@@ -1,23 +1,11 @@
 require('../stylesheets/style.sass');
 var React = require('react');
 var ReactDOM = require('react-dom');
+var Header = require('./Header.js');
+var Slider = require('./Slider.js');
+var Stylesheet = require('stilr');
 
-var MobileContainer = React.createClass({
-  render: function() {
-    return (
-      <div className="mobile-container">
-        <MobileSlide />
-      </div>
-    );
-  }
-});
+document.getElementById('ReactCss').textContent = Stylesheet.render();
 
-var MobileSlide = React.createClass({
-  render: function() {
-    return (
-      <img src="https://instagramstatic-a.akamaihd.net/bluebar/8090b48/images/homepage/screenshot4.jpg"/>
-    )
-  }
-});
-
-ReactDOM.render(<MobileContainer />, document.getElementById('reactContainer'));
+ReactDOM.render(<Header />, document.getElementsByClassName('header')[0]);
+ReactDOM.render(<Slider />, document.getElementsByClassName('slider')[0]);

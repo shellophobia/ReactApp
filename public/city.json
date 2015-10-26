@@ -1,0 +1,28 @@
+{
+  "cities": [
+    {
+      "CityID" : "1",
+      "CityName" : "Bangalore" 
+    },
+    {
+      "CityID" : "2",
+      "CityName" : "Pune" 
+    },
+    {
+      "CityID" : "3",
+      "CityName" : "Delhi NCR" 
+    },
+    {
+      "CityID" : "4",
+      "CityName" : "Mumbai" 
+    },
+    {
+      "CityID" : "5",
+      "CityName" : "Chennai" 
+    },
+    {
+      "CityID" : "6",
+      "CityName" : "Hyderabad" 
+    }
+  ]
+}

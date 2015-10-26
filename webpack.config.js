@@ -16,6 +16,11 @@ module.exports = {
       {
         test: /\.sass$/,
         loader: "style!css!sass?indentedSyntax=true&outputStyle=expanded"
+      },
+      
+      {
+        test: /\.(otf|eot|svg|ttf|woff|woff2)(\?.+)$/,
+        loader: 'url-loader?limit=8192'
       }
     ]
   }
