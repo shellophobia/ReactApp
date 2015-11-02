@@ -93,7 +93,8 @@ module.exports = StyleSheet.create({
     paddingTop: '4px',
     paddingBottom: '7px',
     paddingRight: '10px',
-    float: 'left'
+    float: 'left',
+    position: 'relative'
   },
   
   userStatus: {
@@ -104,8 +105,7 @@ module.exports = StyleSheet.create({
   lowerHeaderWrapper: {
     width: '960px',
     margin: '0 auto',
-    padding: '15px 0px',
-    overflow: 'auto'
+    padding: '15px 0px'
   },
   
   zoomLogo: {
@@ -127,7 +127,8 @@ module.exports = StyleSheet.create({
   
   horizontalNavLi: {
     float: 'left',
-    padding: '0px 10px'
+    padding: '0px 10px',
+    position: 'relative'
   },
   
   borderRight: {
@@ -154,6 +155,12 @@ module.exports = StyleSheet.create({
     padding: '5px 20px',
     borderBottom: '1px solid #ccc',
     cursor: 'pointer'
+  },
+  
+  notificationDropDownUL: {
+    top: '28px',
+    fontSize: '11px',
+    zIndex: '10'
   }
   
 });
