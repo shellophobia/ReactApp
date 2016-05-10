@@ -9,10 +9,11 @@ var default_val = {
   allowFileType: ['jpg','png','jpeg'],
   enablePreview: false,
   inputFieldName: 'avatar',
-  allowAutomatic: true,
+  autoSubmit: true,
   isDragNDrop: true,
   appendFileInput: true,
-  fileInputSelector: 'compressFileInput'
+  fileInputSelector: 'compressFileInput',
+  allowMultiple: false
 };
 
 var uploadFile = function(options) {
@@ -23,28 +24,39 @@ var uploadFile = function(options) {
   this.maxHeight = options.maxHeight || default_val['maxHeight'];
   this.quality = options.quality || default_val['quality'];
   this.outputType = options.outputType || default_val['outputType'];
-  this.isBase64 = options.isBase64 || default_val['isBase64'];
+  this.isBase64 = (typeof options.isBase64 === "undefined") ? default_val['isBase64'] : options.isBase64;
   this.allowFileType = options.allowFileType || default_val['allowFileType'];
   
-  this.enablePreview = options.enablePreview || default_val['enablePreview'];
+  this.enablePreview = (typeof options.enablePreview === "undefined") ? default_val['enablePreview'] : options.enablePreview;
   // if enable preview is enabled then specify the preview Selector
   this.previewSelector = options.previewSelector;
   
   this.inputFieldName = options.inputFieldName || default_val['inputFieldName'];
-  this.allowAutomatic = options.allowAutomatic || default_val['allowAutomatic'];
-  this.isDragNDrop = options.isDragNDrop || default_val['isDragNDrop'];
+  this.autoSubmit = (typeof options.autoSubmit === "undefined") ? default_val['autoSubmit'] : options.autoSubmit;
+  this.isDragNDrop = (typeof options.isDragNDrop === "undefined") ? default_val['isDragNDrop'] : options.isDragNDrop;
   
-  this.appendFileInput = options.appendFileInput || default_val['appendFileInput'];
+  this.appendFileInput = (typeof options.appendFileInput === "undefined") ? default_val['appendFileInput'] : options.appendFileInput;
   // if append file input is set to false then specify the input selector
   this.fileInputSelector = options.fileInputSelector || default_val['fileInputSelector'];
   
-  this.onLoad = options.onLoad;
-  this.onSubmit = options.onSubmit;
+  this.allowMultiple = (typeof options.allowMultiple === "undefined") ? default_val['allowMultiple'] : options.allowMultiple;
+  // if allow multiple is set to true
+  this.maxFiles = options.maxFiles;
+  
+  // no op
+  this.noop = function() { return; }
+  
+  this.onLoad = options.onLoad || this.noop;
+  this.beforeSubmit = options.beforeSubmit || this.noop;
+  this.onSuccess = options.onSuccess || this.noop;
+  this.onError = options.onError || this.noop;
   this.targetElem = this.selector;
   this.stopFlag = false;
+  this.formDataArray = [];
+  this.imageID = 0;
   
   // construct the input DOM
-  var toAppend = '<span>Click on the div to upload<p>Or Drag n Drop the file</p></span><input type = "file" style = "position:absolute;top:0;left:0;right:0;bottom:0;opacity:0;z-index:100;cursor:pointer;height:100%;width:100%;">';
+  var toAppend = '<span>Click on the div to upload<p>Or Drag n Drop the file</p></span><input name = "' + this.fileInputSelector + '[]" type = "file" ' + (this.allowMultiple ? 'multiple = "true"' : '')  + ' style = "position:absolute;top:0;left:0;right:0;bottom:0;opacity:0;z-index:100;cursor:pointer;height:100%;width:100%;">';
   this.toAppend = options.toAppend || toAppend;
   if (this.appendFileInput) {
     $(this.targetElem).append(this.toAppend).css('position', 'relative');
@@ -83,6 +95,10 @@ var uploadFile = function(options) {
       alert( "File "+ file.name +" is not an image." );
       return false;
     }
+    
+    // fire the onload callback
+    this.onLoad();
+    
     // read the files
     var reader = new FileReader();
 
@@ -113,8 +129,11 @@ var uploadFile = function(options) {
         else {
           self.formData.append(self.inputFieldName, resized);
         }
-        if (self.allowAutomatic) {
+        if (self.autoSubmit) {
           self.submitFormData();
+        } else {
+          self.formDataArray[self.imageID] = self.formData;
+          self.imageID++;
         }
       }
     };
@@ -123,19 +142,29 @@ var uploadFile = function(options) {
   // post data function
   this.submitFormData = function() {
     if (this.stopFlag) return;
+    this.beforeSubmit();
     $.ajax({
       url: this.url,
       data: this.formData,
       type: 'POST',
       processData: false,
       contentType: false
-    }).done(self.onSubmit);
+    }).done(self.onSuccess).fail(self.onError);
   }
   
   // starts the upload
   this.startUpload = function() {
     this.stopFlag = false;
-    this.submitFormData();
+    if (!this.autoSubmit) {
+      var keys = Object.keys(this.formDataArray);
+      for (var i=0; i<this.formDataArray.length; i++) {
+        this.formData = this.formDataArray[i][keys[i]];
+        this.submitFormData();
+      }
+    }
+    else {
+      this.submitFormData();
+    }
   }
   
   // stops the upload
@@ -168,6 +197,7 @@ var uploadFile = function(options) {
     canvas.height = height;
     var ctx = canvas.getContext("2d");
     ctx.drawImage(img, 0, 0, width, height);
+    
     if (this.enablePreview) {
       var parentDiv = document.createElement('div');
       parentDiv.setAttribute('class', 'preview_container');
@@ -176,6 +206,7 @@ var uploadFile = function(options) {
       var button = document.createElement('button');
       button.innerHTML = 'Delete';
       button.setAttribute('class', 'delete_preview');
+      button.setAttribute('data-id', this.imageID);
       parentDiv.appendChild(button);
       previewSelector.appendChild(parentDiv);
     }
@@ -208,6 +239,17 @@ var uploadFile = function(options) {
     return blob;
   }
   
+  // removes the upload Area container from dom
+  this.remove = function() {
+    this.stopUpload();
+    if (this.toAppend) {
+      $(this.targetElem).html('');
+    }
+    if (this.enablePreview) {
+      $(this.previewSelector).html('');
+    }
+  }
+  
   // read files from input
   $('body').on('change', '#' + this.fileInputSelector, function(e) {
     if ( !( window.File && window.FileReader && window.FileList && window.Blob ) ) {
@@ -219,7 +261,8 @@ var uploadFile = function(options) {
   
   // delete preview code
   $('body').on('click', '.delete_preview', function(e) {
-    $(this).parent().remove()
+    $(this).parent().remove();
+    self.formDataArray.splice($(this).data('id'), 1);
   });
   
   if (this.isDragNDrop) {
