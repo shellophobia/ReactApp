@@ -13,7 +13,8 @@ var default_val = {
   isDragNDrop: true,
   appendFileInput: true,
   fileInputSelector: 'compressFileInput',
-  allowMultiple: false
+  allowMultiple: false,
+  allowAjax: true
 };
 
 var uploadFile = function(options) {
@@ -42,6 +43,9 @@ var uploadFile = function(options) {
   this.allowMultiple = (typeof options.allowMultiple === "undefined") ? default_val['allowMultiple'] : options.allowMultiple;
   // if allow multiple is set to true
   this.maxFiles = options.maxFiles;
+  
+  // allow ajax call to server
+  this.allowAjax = (typeof options.allowAjax === "undefined") ? default_val['allowAjax'] : options.allowAjax;
   
   // no op
   this.noop = function() { return; }
@@ -122,19 +126,32 @@ var uploadFile = function(options) {
         // have to wait till it's loaded
         var resized = self.resizeImg(image); // send it to canvas
         self.formData = new FormData();
+        var file;
+        
         if (self.isBase64) {
-          var file = self.base64ToBlob(resized);
-          self.formData.append(self.inputFieldName, file);
+          self.formData.append(self.inputFieldName + (self.allowMultiple ? '[]' : ''), resized);
         }
         else {
-          self.formData.append(self.inputFieldName, resized);
+          file = self.base64ToBlob(resized);
+          self.formData.append(self.inputFieldName + (self.allowMultiple ? '[]' : ''), file);
         }
-        if (self.autoSubmit) {
-          self.submitFormData();
+        
+        if (self.allowAjax) {
+          if (self.autoSubmit) {
+            self.submitFormData();
+          } else {
+            self.formDataArray[self.imageID] = self.formData;
+            self.imageID++;
+          }
         } else {
-          self.formDataArray[self.imageID] = self.formData;
-          self.imageID++;
+          var hiddenInput = document.createElement('input');
+          hiddenInput.setAttribute('type', 'hidden');
+          hiddenInput.setAttribute('name', self.inputFieldName + (self.allowMultiple ? '[]' : ''));
+          hiddenInput.setAttribute('value', (self.isBase64 ? resized : file));
+          hiddenInput.setAttribute('id', 'hidden' + self.imageID);
+          document.getElementById(self.targetElem.substring(1)).appendChild(hiddenInput);
         }
+        
       }
     };
   }
@@ -240,7 +257,7 @@ var uploadFile = function(options) {
   }
   
   // removes the upload Area container from dom
-  this.remove = function() {
+  this.removeField = function() {
     this.stopUpload();
     if (this.toAppend) {
       $(this.targetElem).html('');
@@ -263,6 +280,9 @@ var uploadFile = function(options) {
   $('body').on('click', '.delete_preview', function(e) {
     $(this).parent().remove();
     self.formDataArray.splice($(this).data('id'), 1);
+    $('#hidden' + $(this).data('id')).remove();
+    var fileinput = document.getElementById(self.fileInputSelector);
+    fileinput.value = "";
   });
   
   if (this.isDragNDrop) {
