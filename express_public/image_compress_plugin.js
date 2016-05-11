@@ -14,7 +14,8 @@ var default_val = {
   appendFileInput: true,
   fileInputSelector: 'compressFileInput',
   allowMultiple: false,
-  allowAjax: true
+  allowAjax: true,
+  appendFormData: false
 };
 
 var uploadFile = function(options) {
@@ -47,6 +48,12 @@ var uploadFile = function(options) {
   // allow ajax call to server
   this.allowAjax = (typeof options.allowAjax === "undefined") ? default_val['allowAjax'] : options.allowAjax;
   
+  this.appendFormData = (typeof options.appendFormData === "undefined") ? default_val['appendFormData'] : options.appendFormData;
+  //append formdata from form
+  this.formID = options.formID;
+  //append formdata from string ["param1=x&param2=y"]
+  this.formDataString = options.formDataString;
+  
   // no op
   this.noop = function() { return; }
   
@@ -56,11 +63,13 @@ var uploadFile = function(options) {
   this.onError = options.onError || this.noop;
   this.targetElem = this.selector;
   this.stopFlag = false;
-  this.formDataArray = [];
+  this.formDataArray = {};
   this.imageID = 0;
   
+  self.formData = new FormData();
+  
   // construct the input DOM
-  var toAppend = '<span>Click on the div to upload<p>Or Drag n Drop the file</p></span><input name = "' + this.fileInputSelector + '[]" type = "file" ' + (this.allowMultiple ? 'multiple = "true"' : '')  + ' style = "position:absolute;top:0;left:0;right:0;bottom:0;opacity:0;z-index:100;cursor:pointer;height:100%;width:100%;">';
+  var toAppend = '<span>Click on the div to upload<p>Or Drag n Drop the file</p></span><input type = "file" ' + (this.allowMultiple ? 'multiple = "true"' : '')  + ' style = "position:absolute;top:0;left:0;right:0;bottom:0;opacity:0;z-index:100;cursor:pointer;height:100%;width:100%;">';
   this.toAppend = options.toAppend || toAppend;
   if (this.appendFileInput) {
     $(this.targetElem).append(this.toAppend).css('position', 'relative');
@@ -125,7 +134,6 @@ var uploadFile = function(options) {
       image.onload = function() {
         // have to wait till it's loaded
         var resized = self.resizeImg(image); // send it to canvas
-        self.formData = new FormData();
         var file;
         
         if (self.isBase64) {
@@ -140,25 +148,51 @@ var uploadFile = function(options) {
           if (self.autoSubmit) {
             self.submitFormData();
           } else {
-            self.formDataArray[self.imageID] = self.formData;
+            self.formDataArray[self.imageID] = (self.isBase64 ? resized : file);
             self.imageID++;
           }
-        } else {
-          var hiddenInput = document.createElement('input');
-          hiddenInput.setAttribute('type', 'hidden');
-          hiddenInput.setAttribute('name', self.inputFieldName + (self.allowMultiple ? '[]' : ''));
-          hiddenInput.setAttribute('value', (self.isBase64 ? resized : file));
-          hiddenInput.setAttribute('id', 'hidden' + self.imageID);
-          document.getElementById(self.targetElem.substring(1)).appendChild(hiddenInput);
+        }
+        else {
+          if (self.isBase64) {
+            var hiddenInput = document.createElement('input');
+            hiddenInput.setAttribute('type', 'hidden');
+            hiddenInput.setAttribute('name', self.inputFieldName + (self.allowMultiple ? '[]' : ''));
+            hiddenInput.setAttribute('value', resized);
+            hiddenInput.setAttribute('id', 'hidden' + self.imageID);
+            document.getElementById(self.targetElem.substring(1)).appendChild(hiddenInput);
+          }
         }
         
       }
     };
   }
   
+  this.appendUserFormData = function() {
+    
+    // serialize form data to get a string of form data
+    if (typeof this.formID !== "undefined") { this.formDataString = $(this.formID).serialize(); }
+    
+    this.formDataString = this.formDataString.split('&');
+    
+    for (var i=0; i<this.formDataString.length; i++) {
+      var keyValue = this.formDataString[i].split('=');
+      this.formData.append(keyValue[0], keyValue[1]);
+    }
+    
+  }
+  
+  this.appendImageData = function() {
+    var keys = Object.keys(this.formDataArray);
+    this.formData = new FormData();
+    for (var i=0; i<keys.length; i++) {
+      this.formData.append(this.inputFieldName + (self.allowMultiple ? '[]' : ''), this.formDataArray[keys[i]]);
+    }
+  }
+  
   // post data function
   this.submitFormData = function() {
     if (this.stopFlag) return;
+    if(this.appendFormData) this.appendUserFormData();
     this.beforeSubmit();
     $.ajax({
       url: this.url,
@@ -172,12 +206,10 @@ var uploadFile = function(options) {
   // starts the upload
   this.startUpload = function() {
     this.stopFlag = false;
+    if (!this.allowAjax) { console.log('Ajax is set to false'); return;}
     if (!this.autoSubmit) {
-      var keys = Object.keys(this.formDataArray);
-      for (var i=0; i<this.formDataArray.length; i++) {
-        this.formData = this.formDataArray[i][keys[i]];
-        this.submitFormData();
-      }
+      this.appendImageData();
+      this.submitFormData();
     }
     else {
       this.submitFormData();
@@ -279,7 +311,7 @@ var uploadFile = function(options) {
   // delete preview code
   $('body').on('click', '.delete_preview', function(e) {
     $(this).parent().remove();
-    self.formDataArray.splice($(this).data('id'), 1);
+    delete self.formDataArray[$(this).data('id')];
     $('#hidden' + $(this).data('id')).remove();
     var fileinput = document.getElementById(self.fileInputSelector);
     fileinput.value = "";
